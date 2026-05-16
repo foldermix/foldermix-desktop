@@ -38,9 +38,13 @@ jobs:
 
       - name: Create GitHub Release
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            "build/foldermix-v${{ steps.version.outputs.version }}.dmg" \
+          VERSION="${{ steps.version.outputs.version }}"
+          # Versioned name for the release page + fixed name for stable download URL
+          cp "build/foldermix-v${VERSION}.dmg" "build/foldermix-desktop.dmg"
+          gh release create "v${VERSION}" \
+            "build/foldermix-v${VERSION}.dmg" \
+            "build/foldermix-desktop.dmg" \
             --generate-notes \
-            --title "foldermix desktop v${{ steps.version.outputs.version }}"
+            --title "foldermix desktop v${VERSION}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
