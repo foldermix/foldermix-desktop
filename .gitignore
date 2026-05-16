@@ -216,3 +216,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# macOS desktop build outputs
+.build/
+build/
+DerivedData/
+*.dmg
+*.xcuserstate
+.DS_Store
