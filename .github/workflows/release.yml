@@ -34,15 +34,12 @@ jobs:
         run: pip install pillow
 
       - name: Build DMG
-        id: build
-        run: |
-          dmg_path=$(./scripts/build_dmg.sh "${{ steps.version.outputs.version }}")
-          echo "dmg_path=$dmg_path" >> "$GITHUB_OUTPUT"
+        run: ./scripts/build_dmg.sh "${{ steps.version.outputs.version }}"
 
       - name: Create GitHub Release
         run: |
           gh release create "v${{ steps.version.outputs.version }}" \
-            "${{ steps.build.outputs.dmg_path }}" \
+            "build/foldermix-v${{ steps.version.outputs.version }}.dmg" \
             --generate-notes \
             --title "foldermix desktop v${{ steps.version.outputs.version }}"
         env:
