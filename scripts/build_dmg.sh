@@ -10,7 +10,13 @@ APP_DIR="$BUILD_DIR/$APP_NAME.app"
 DMG_DIR="$BUILD_DIR/dmg"
 DMG_PATH="$BUILD_DIR/$APP_NAME-v$VERSION.dmg"
 ICONSET_DIR="$BUILD_DIR/AppIcon.iconset"
-FOLDERMIX_CLI_SOURCE="${FOLDERMIX_CLI_SOURCE:-$(cd "$ROOT_DIR/../foldermix" && pwd)}"
+# If FOLDERMIX_CLI_SOURCE is not set, fall back to a sibling checkout (local dev)
+# or PyPI mode (CI). PyPI mode is used when no sibling dir exists either.
+FOLDERMIX_CLI_SOURCE="${FOLDERMIX_CLI_SOURCE:-}"
+if [[ -z "$FOLDERMIX_CLI_SOURCE" && -d "$ROOT_DIR/../foldermix" ]]; then
+    FOLDERMIX_CLI_SOURCE="$(cd "$ROOT_DIR/../foldermix" && pwd)"
+fi
+
 CLI_ENTRY="$BUILD_DIR/foldermix_cli_entry.py"
 CLI_DIST_DIR="$BUILD_DIR/cli-dist"
 CLI_WORK_DIR="$BUILD_DIR/cli-work"
@@ -30,25 +36,48 @@ if __name__ == "__main__":
     app()
 PY
 
-(
-  cd "$FOLDERMIX_CLI_SOURCE"
-  uv run \
-    --extra all \
-    --extra markitdown \
-    --with pyinstaller \
-    pyinstaller \
-      --clean \
-      --noconfirm \
-      --name foldermix-cli \
-      --onedir \
-      --distpath "$CLI_DIST_DIR" \
-      --workpath "$CLI_WORK_DIR" \
-      --copy-metadata foldermix \
-      --collect-all rapidocr_onnxruntime \
-      --collect-all onnxruntime \
-      --hidden-import rapidocr_onnxruntime \
-      "$CLI_ENTRY"
-)
+if [[ -n "$FOLDERMIX_CLI_SOURCE" ]]; then
+    # Local source mode: delegate to uv inside the foldermix source tree.
+    (
+      cd "$FOLDERMIX_CLI_SOURCE"
+      uv run \
+        --extra all \
+        --extra markitdown \
+        --with pyinstaller \
+        pyinstaller \
+          --clean \
+          --noconfirm \
+          --name foldermix-cli \
+          --onedir \
+          --distpath "$CLI_DIST_DIR" \
+          --workpath "$CLI_WORK_DIR" \
+          --copy-metadata foldermix \
+          --collect-all rapidocr_onnxruntime \
+          --collect-all onnxruntime \
+          --hidden-import rapidocr_onnxruntime \
+          "$CLI_ENTRY"
+    )
+else
+    # PyPI mode (CI): install the pinned foldermix version into a venv.
+    FOLDERMIX_PYPI_VERSION="$(cat "$ROOT_DIR/foldermix-version.txt")"
+    python3 -m venv "$BUILD_DIR/pyinstaller-venv"
+    "$BUILD_DIR/pyinstaller-venv/bin/pip" install --quiet --upgrade pip
+    "$BUILD_DIR/pyinstaller-venv/bin/pip" install --quiet \
+        "foldermix[all,markitdown]==$FOLDERMIX_PYPI_VERSION" \
+        pyinstaller
+    "$BUILD_DIR/pyinstaller-venv/bin/pyinstaller" \
+        --clean \
+        --noconfirm \
+        --name foldermix-cli \
+        --onedir \
+        --distpath "$CLI_DIST_DIR" \
+        --workpath "$CLI_WORK_DIR" \
+        --copy-metadata foldermix \
+        --collect-all rapidocr_onnxruntime \
+        --collect-all onnxruntime \
+        --hidden-import rapidocr_onnxruntime \
+        "$CLI_ENTRY"
+fi
 
 cp -R "$CLI_DIST_DIR/foldermix-cli" "$APP_DIR/Contents/Resources/bin/foldermix-cli"
 
