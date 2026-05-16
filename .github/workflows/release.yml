@@ -33,17 +33,24 @@ jobs:
       - name: Install Pillow (icon generation)
         run: pip install pillow
 
-      - name: Build DMG
+      - name: Build DMG (standard — no OCR)
         run: ./scripts/build_dmg.sh "${{ steps.version.outputs.version }}"
+
+      - name: Build DMG (full — with OCR)
+        run: ./scripts/build_dmg.sh "${{ steps.version.outputs.version }}" --full
 
       - name: Create GitHub Release
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          # Versioned name for the release page + fixed name for stable download URL
-          cp "build/foldermix-v${VERSION}.dmg" "build/foldermix-desktop.dmg"
+          # Versioned names for the release page
+          # Fixed names for stable download URLs (latest/download/<name>)
+          cp "build/foldermix-v${VERSION}.dmg"       "build/foldermix-desktop.dmg"
+          cp "build/foldermix-v${VERSION}-full.dmg"  "build/foldermix-desktop-full.dmg"
           gh release create "v${VERSION}" \
             "build/foldermix-v${VERSION}.dmg" \
+            "build/foldermix-v${VERSION}-full.dmg" \
             "build/foldermix-desktop.dmg" \
+            "build/foldermix-desktop-full.dmg" \
             --generate-notes \
             --title "foldermix desktop v${VERSION}"
         env:
